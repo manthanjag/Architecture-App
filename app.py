@@ -1,4 +1,4 @@
-
+!pip install streamlit openai graphviz
 import strealit as st
 import openai
 import json
