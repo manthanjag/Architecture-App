@@ -75,7 +75,7 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.edge("Ingestion", "Transformation")
     flowchart.edge("Transformation", "Visualization")
 
-    output_path = '/mnt/data/data_architecture_flowchart'
+    #output_path = '/mnt/data/data_architecture_flowchart'
     flowchart.render(output_path, view=False)
 
     return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
