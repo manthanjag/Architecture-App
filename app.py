@@ -76,9 +76,9 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.edge("Transformation", "Visualization")
 
     #output_path = '/mnt/data/data_architecture_flowchart'
-    flowchart.render(output_path, view=False)
+    #flowchart.render(output_path, view=False)
 
-    return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
+    #return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
 
 # Streamlit UI
 st.title("Data Architecture Tool Suggestion")
