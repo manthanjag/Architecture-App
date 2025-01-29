@@ -6,7 +6,7 @@ from graphviz import Digraph
 
 
 # Set your OpenAI API key
-#openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = key
 # Function to get tool suggestions from GPT
 def get_tool_suggestions(data_sources, refresh_details):
     messages = [
