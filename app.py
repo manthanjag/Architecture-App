@@ -1,5 +1,5 @@
-!pip install streamlit openai graphviz
-import strealit as st
+
+import streamlit as st
 import openai
 import json
 from graphviz import Digraph
