@@ -6,7 +6,7 @@ from graphviz import Digraph
 
 
 # Set your OpenAI API key
-openai.api_key = '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'
+openai.api_key = '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'
 
 # Function to get tool suggestions from GPT
 def get_tool_suggestions(data_sources, refresh_details):
