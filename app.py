@@ -1,4 +1,4 @@
-
+import os
 import streamlit as st
 import openai
 import json
@@ -6,8 +6,7 @@ from graphviz import Digraph
 
 
 # Set your OpenAI API key
-openai.api_key = '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'
-
+openai.api_key = os.getenv("OPENAI_API_KEY")
 # Function to get tool suggestions from GPT
 def get_tool_suggestions(data_sources, refresh_details):
     messages = [
