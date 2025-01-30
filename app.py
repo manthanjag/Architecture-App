@@ -4,8 +4,8 @@ import openai
 import json
 import os
 import graphviz
-st.write("Graphviz Path:", os.environ.get("PATH"))
-st.write("Graphviz Executables:", graphviz.backend.viewing.EXECUTABLES)
+#st.write("Graphviz Path:", os.environ.get("PATH"))
+#st.write("Graphviz Executables:", graphviz.backend.viewing.EXECUTABLES)
 from graphviz import Digraph
 
 
