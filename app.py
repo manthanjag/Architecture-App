@@ -4,9 +4,9 @@ import openai
 import json
 from graphviz import Digraph
 
-
 # Set your OpenAI API key
 openai.api_key = st.secrets["key"]
+
 # Function to get tool suggestions from GPT
 def get_tool_suggestions(data_sources, refresh_details):
     messages = [
@@ -66,19 +66,24 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.node("Data Sources", f"Data Sources:\n{data_sources_text}")
 
     # Add nodes based on GPT suggestions
-    flowchart.node("Ingestion", f"{tool_suggestions['ingestion']['tool']} (Ingestion)")
-    flowchart.node("Transformation", f"{tool_suggestions['transformation']['tool']} (Transformation)")
-    flowchart.node("Visualization", f"{tool_suggestions['visualization']['tool']} (Visualization)")
+    ingestion_tool = tool_suggestions.get('ingestion', {}).get('tool', 'Unknown')
+    transformation_tool = tool_suggestions.get('transformation', {}).get('tool', 'Unknown')
+    visualization_tool = tool_suggestions.get('visualization', {}).get('tool', 'Unknown')
+
+    flowchart.node("Ingestion", f"{ingestion_tool} (Ingestion)")
+    flowchart.node("Transformation", f"{transformation_tool} (Transformation)")
+    flowchart.node("Visualization", f"{visualization_tool} (Visualization)")
 
     # Add Edges
     flowchart.edge("Data Sources", "Ingestion")
     flowchart.edge("Ingestion", "Transformation")
     flowchart.edge("Transformation", "Visualization")
 
-    #output_path = '/mnt/data/data_architecture_flowchart'
-    #flowchart.render(output_path, view=False)
+    # Save flowchart to the current directory (no /mnt/data/)
+    output_path = "data_architecture_flowchart"
+    flowchart.render(output_path, format="png", view=False)
 
-    #return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
+    return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
 
 # Streamlit UI
 st.title("Data Architecture Tool Suggestion")
@@ -116,15 +121,15 @@ if data_sources:
         with st.spinner("Generating suggestions and flowchart..."):
             json_response, flowchart_image_path = generate_flowchart_and_json(data_sources, refresh_details)
 
-        if "Error" in json_response:
-            st.error(json_response)
+        if json_response is None or "Error" in json_response:
+            st.error(json_response if json_response else "Failed to generate JSON response.")
         else:
             st.success("Flowchart and JSON generated successfully!")
             st.subheader("Tool Suggestions (JSON):")
             st.code(json_response, language="json")
 
-            st.subheader("Flowchart:")
-            st.image(flowchart_image_path)
-
-
-
+            if flowchart_image_path and os.path.exists(flowchart_image_path):
+                st.subheader("Flowchart:")
+                st.image(flowchart_image_path)
+            else:
+                st.error("Flowchart image not found. Please try again.")
