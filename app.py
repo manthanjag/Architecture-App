@@ -4,23 +4,23 @@ import openai
 import json
 from graphviz import Digraph
 
-# Set your OpenAI API key
+# Set OpenAI API key from secrets
 openai.api_key = st.secrets["key"]
 
-# Function to get tool suggestions from GPT
+# Function to get tool suggestions
 def get_tool_suggestions(data_sources, refresh_details):
     messages = [
         {
             "role": "system",
-            "content": "You are a cloud architecture expert. Provide low-cost, high-performance tool recommendations for ingestion, transformation, and visualization tasks from the following list only: Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau."
+            "content": "You are a cloud architecture expert. Provide low-cost, high-performance tool recommendations for ingestion, transformation, and visualization tasks."
         },
         {
             "role": "user",
             "content": f"""
         Based on the following data sources and refresh configuration, suggest one tool for each task (ingestion, transformation, visualization) strictly from this list:
         [Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
-        The output must follow this JSON structure:
-
+        
+        Expected JSON format:
         {{
             "ingestion": {{"tool": "ToolName"}},
             "transformation": {{"tool": "ToolName"}},
@@ -28,7 +28,7 @@ def get_tool_suggestions(data_sources, refresh_details):
         }}
 
         Data Sources: {", ".join(data_sources)}
-        Refresh Configuration:
+        Refresh Config:
         - Historical Load: {refresh_details['historical_load']}
         - Monthly Increase: {refresh_details['monthly_increase']}
         - Number of Datasets: {refresh_details['datasets']}
@@ -47,25 +47,28 @@ def get_tool_suggestions(data_sources, refresh_details):
         max_tokens=500
     )
 
-    return response.choices[0].message['content']
+    response_text = response.choices[0].message['content']
+    
+    try:
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        st.error("❌ GPT returned an invalid response. Try again.")
+        return None
 
 # Function to generate the flowchart and JSON
 def generate_flowchart_and_json(data_sources, refresh_details):
-    gpt_response = get_tool_suggestions(data_sources, refresh_details)
+    tool_suggestions = get_tool_suggestions(data_sources, refresh_details)
 
-    try:
-        tool_suggestions = json.loads(gpt_response)
-    except json.JSONDecodeError:
-        return "Error parsing GPT response. Please try again.", None
+    if not tool_suggestions:
+        return None, None  # Prevents unpacking error
 
-    # Create the flowchart using Graphviz
-    flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR', 'fontsize': '10'}, node_attr={'shape': 'box', 'fontsize': '10'})
+    # Graphviz flowchart
+    flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR'}, node_attr={'shape': 'box'})
 
-    # Combine all data sources into a single node
-    data_sources_text = "\n".join(data_sources)
-    flowchart.node("Data Sources", f"Data Sources:\n{data_sources_text}")
+    # Data Sources Node
+    flowchart.node("Data Sources", "\n".join(data_sources))
 
-    # Add nodes based on GPT suggestions
+    # Extract tools
     ingestion_tool = tool_suggestions.get('ingestion', {}).get('tool', 'Unknown')
     transformation_tool = tool_suggestions.get('transformation', {}).get('tool', 'Unknown')
     visualization_tool = tool_suggestions.get('visualization', {}).get('tool', 'Unknown')
@@ -74,16 +77,17 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.node("Transformation", f"{transformation_tool} (Transformation)")
     flowchart.node("Visualization", f"{visualization_tool} (Visualization)")
 
-    # Add Edges
     flowchart.edge("Data Sources", "Ingestion")
     flowchart.edge("Ingestion", "Transformation")
     flowchart.edge("Transformation", "Visualization")
 
-    # Save flowchart to the current directory (no /mnt/data/)
     output_path = "data_architecture_flowchart"
-    flowchart.render(output_path, format="png", view=False)
-
-    return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
+    try:
+        flowchart.render(output_path, format="png", view=False)
+        return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
+    except Exception as e:
+        st.error(f"❌ Flowchart generation failed: {e}")
+        return json.dumps(tool_suggestions, indent=4), None
 
 # Streamlit UI
 st.title("Data Architecture Tool Suggestion")
@@ -121,10 +125,10 @@ if data_sources:
         with st.spinner("Generating suggestions and flowchart..."):
             json_response, flowchart_image_path = generate_flowchart_and_json(data_sources, refresh_details)
 
-        if json_response is None or "Error" in json_response:
-            st.error(json_response if json_response else "Failed to generate JSON response.")
+        if not json_response or "Error" in json_response:
+            st.error("❌ Failed to generate JSON response.")
         else:
-            st.success("Flowchart and JSON generated successfully!")
+            st.success("✅ Flowchart and JSON generated successfully!")
             st.subheader("Tool Suggestions (JSON):")
             st.code(json_response, language="json")
 
@@ -132,4 +136,4 @@ if data_sources:
                 st.subheader("Flowchart:")
                 st.image(flowchart_image_path)
             else:
-                st.error("Flowchart image not found. Please try again.")
+                st.warning("⚠️ Flowchart image not found. Check graphviz installation.")
