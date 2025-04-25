@@ -157,7 +157,7 @@ if data_sources:
         }
 
         with st.spinner("Generating suggestions and flowchart..."):
-            json_response, flowchart_image_path = generate_flowchart_and_json(data_sources, refresh_details)
+            json_response, flowchart_object = generate_flowchart_and_json(data_sources, refresh_details)
 
         if not json_response or "Error" in json_response:
             st.error("❌ Failed to generate JSON response.")
@@ -166,8 +166,8 @@ if data_sources:
             st.subheader("Tool Suggestions (JSON):")
             st.code(json_response, language="json")
 
-            if flowchart_image_path:
+            if flowchart_object:
                 st.subheader("Flowchart:")
-                st.graphviz_chart(flowchart_image_path.source)
+                st.graphviz_chart(flowchart_object.source)
             else:
                 st.warning("⚠️ Flowchart could not be generated.")
