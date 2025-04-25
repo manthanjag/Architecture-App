@@ -105,9 +105,9 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.edge("Transformation", "Visualization")
 
     output_path = "data_architecture_flowchart"
-    try:
+      try:
         flowchart.render(output_path, format="png", view=False)
-        return json.dumps(tool_suggestions, indent=4), f"{output_path}.png"
+        return json.dumps(tool_suggestions, indent=4), flowchart  # <-- CHANGED THIS FROM NONE TO flowchart
     except Exception as e:
         st.error(f"❌ Flowchart generation failed: {e}")
         return json.dumps(tool_suggestions, indent=4), None
@@ -166,8 +166,8 @@ if data_sources:
             st.subheader("Tool Suggestions (JSON):")
             st.code(json_response, language="json")
 
-            if flowchart_image_path and os.path.exists(flowchart_image_path):
+            if flowchart_image_path:
                 st.subheader("Flowchart:")
-                st.image(flowchart_image_path)
+                st.graphviz_chart(flowchart_image_path.source)
             else:
-                st.warning("⚠️ Flowchart image not found. Check graphviz installation.")
+                st.warning("⚠️ Flowchart could not be generated.")
