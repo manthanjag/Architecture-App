@@ -65,7 +65,7 @@ def get_tool_suggestions(data_sources, refresh_details):
     ]
 
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-4o-mini",
         messages=messages,
         max_tokens=500
     )
