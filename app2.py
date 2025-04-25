@@ -105,7 +105,7 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.edge("Transformation", "Visualization")
 
     output_path = "data_architecture_flowchart"
-      try:
+    try:
         flowchart.render(output_path, format="png", view=False)
         return json.dumps(tool_suggestions, indent=4), flowchart  # <-- CHANGED THIS FROM NONE TO flowchart
     except Exception as e:
