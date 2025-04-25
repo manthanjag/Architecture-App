@@ -1,3 +1,4 @@
+os.environ["ACCEPT_EULA"] = "Y"
 import os
 import streamlit as st
 import openai
