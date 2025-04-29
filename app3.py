@@ -4,12 +4,13 @@ import openai
 import json
 import graphviz
 import re
+import pandas as pd
 from graphviz import Digraph
 
-# Set OpenAI API key from secrets
+# Set OpenAI API key
 openai.api_key = st.secrets["key"]
 
-# Function to parse human-readable number inputs (e.g., "20 million" → 20000000)
+# Function to parse human-readable numbers
 def parse_number_input(input_text):
     input_text = input_text.lower().replace(",", "").strip()
     number_map = {
@@ -24,8 +25,19 @@ def parse_number_input(input_text):
         num = float(num)
         multiplier = number_map.get(unit, 1)
         return int(num * multiplier)
-    
     return None
+
+# Tool cost estimates by tier (mocked)
+TOOL_COSTS = {
+    "Domo": {"Small": 500, "Medium": 2000, "Large": 5000},
+    "Power BI": {"Small": 200, "Medium": 1000, "Large": 3000},
+    "Sigma": {"Small": 300, "Medium": 1500, "Large": 4000},
+    "dbt": {"Small": 100, "Medium": 500, "Large": 2000},
+    "Snowflake": {"Small": 300, "Medium": 2000, "Large": 8000},
+    "Databricks": {"Small": 500, "Medium": 2500, "Large": 9000},
+    "ADF": {"Small": 100, "Medium": 800, "Large": 2500},
+    "Tableau": {"Small": 300, "Medium": 1500, "Large": 4500},
+}
 
 # Function to get tool suggestions
 def get_tool_suggestions(data_sources, refresh_details):
@@ -39,7 +51,7 @@ def get_tool_suggestions(data_sources, refresh_details):
             "content": f"""
         Based on the following data sources and refresh configuration, suggest one tool for each task (ingestion, transformation, visualization) strictly from this list:
         [Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
-        
+
         Expected JSON format:
         {{
             "ingestion": {{"tool": "ToolName"}},
@@ -68,23 +80,35 @@ def get_tool_suggestions(data_sources, refresh_details):
     )
 
     response_text = response.choices[0].message['content']
-    
     try:
         return json.loads(response_text)
     except json.JSONDecodeError:
         st.error("❌ GPT returned an invalid response. Try again.")
         return None
 
-# Function to generate the flowchart and JSON
+# Estimate costs based on tier
+def estimate_tool_costs(tool_suggestions, usage_tier):
+    cost_data = []
+    for category, tool_info in tool_suggestions.items():
+        tool_name = tool_info.get("tool")
+        if tool_name in TOOL_COSTS:
+            cost = TOOL_COSTS[tool_name].get(usage_tier, "N/A")
+        else:
+            cost = "N/A"
+        cost_data.append({
+            "Tool": tool_name,
+            "Category": category.capitalize(),
+            "Estimated Monthly Cost ($)": cost
+        })
+    return pd.DataFrame(cost_data)
+
+# Flowchart and JSON generation
 def generate_flowchart_and_json(data_sources, refresh_details):
     tool_suggestions = get_tool_suggestions(data_sources, refresh_details)
-
     if not tool_suggestions:
-        return None, None
+        return None, None, None
 
-    # Graphviz flowchart
     flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR'}, node_attr={'shape': 'box'})
-
     flowchart.node("Data Sources", "\n".join(data_sources))
 
     ingestion_tool = tool_suggestions.get('ingestion', {}).get('tool', 'Unknown')
@@ -99,7 +123,7 @@ def generate_flowchart_and_json(data_sources, refresh_details):
     flowchart.edge("Ingestion", "Transformation")
     flowchart.edge("Transformation", "Visualization")
 
-    return json.dumps(tool_suggestions, indent=4), flowchart.source
+    return json.dumps(tool_suggestions, indent=4), flowchart.source, tool_suggestions
 
 # Streamlit UI
 st.title("Data Architecture Tool Suggestion")
@@ -123,6 +147,8 @@ if data_sources:
     hourly_refresh_input = st.text_input("Hourly Refresh Datasets:", "3")
     real_time_refresh_input = st.text_input("15-Min Refresh Datasets:", "2")
 
+    usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"], index=1)
+
     historical_load = parse_number_input(historical_load_input) or 0
     monthly_increase = parse_number_input(monthly_increase_input) or 0
     datasets = parse_number_input(datasets_input) or 0
@@ -131,7 +157,7 @@ if data_sources:
     hourly_refresh = parse_number_input(hourly_refresh_input) or 0
     real_time_refresh = parse_number_input(real_time_refresh_input) or 0
 
-    if st.button("Generate Flowchart and JSON"):
+    if st.button("Generate Flowchart and Cost Estimate"):
         refresh_details = {
             "historical_load": historical_load,
             "monthly_increase": monthly_increase,
@@ -143,7 +169,7 @@ if data_sources:
         }
 
         with st.spinner("Generating suggestions and flowchart..."):
-            json_response, graphviz_code = generate_flowchart_and_json(data_sources, refresh_details)
+            json_response, graphviz_code, tool_suggestions = generate_flowchart_and_json(data_sources, refresh_details)
 
         if not json_response or "Error" in json_response:
             st.error("❌ Failed to generate JSON response.")
@@ -157,3 +183,8 @@ if data_sources:
                 st.graphviz_chart(graphviz_code)
             else:
                 st.warning("⚠️ Flowchart generation failed.")
+
+            # Show cost estimates
+            st.subheader(f"Estimated Monthly Cost ({usage_tier} Tier):")
+            cost_df = estimate_tool_costs(tool_suggestions, usage_tier)
+            st.table(cost_df)
