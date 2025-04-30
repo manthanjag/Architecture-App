@@ -26,7 +26,7 @@ def parse_number_input(input_text):
         return int(num * multiplier)
     return None
 
-# Tool cost estimates
+# Tool cost estimates (optional predefined ones)
 TOOL_COSTS = {
     "Domo": {"Small": 500, "Medium": 2000, "Large": 5000},
     "Power BI": {"Small": 200, "Medium": 1000, "Large": 3000},
@@ -36,6 +36,9 @@ TOOL_COSTS = {
     "Databricks": {"Small": 500, "Medium": 2500, "Large": 9000},
     "ADF": {"Small": 100, "Medium": 800, "Large": 2500},
     "Tableau": {"Small": 300, "Medium": 1500, "Large": 4500},
+    "Kafka": {"Small": 400, "Medium": 1500, "Large": 5000},
+    "Fivetran": {"Small": 300, "Medium": 1200, "Large": 4000},
+    "Airbyte": {"Small": 200, "Medium": 800, "Large": 3000},
 }
 
 # GPT prompt
@@ -43,7 +46,7 @@ def get_tool_suggestions(data_sources, refresh_details, custom_requirement):
     user_message = f"""
 You are a cloud architecture expert. Based on the following data, suggest the best ingestion, transformation, and visualization tools.
 
-You are free to choose any tools that best fit the use case (no restriction to a predefined list). Prioritize tools that are industry-standard, scalable, and cost-effective.
+You are free to recommend any tools that best fit the use case (no restriction to any list). Prioritize tools that are scalable, industry-standard, and cost-effective.
 
 Dataset Details:
 - Data Sources: {", ".join(data_sources)}
@@ -89,13 +92,12 @@ def estimate_tool_costs(tool_suggestions, usage_tier):
     cost_data = []
     for category, tool_info in tool_suggestions.items():
         tool_name = tool_info.get("tool")
-        if tool_name:
-            cost = TOOL_COSTS.get(tool_name, {}).get(usage_tier, "Custom Pricing")
-            cost_data.append({
-                "Tool": tool_name,
-                "Category": category.capitalize(),
-                "Estimated Monthly Cost ($)": cost
-            })
+        cost = TOOL_COSTS.get(tool_name, {}).get(usage_tier, "Custom Pricing")
+        cost_data.append({
+            "Tool": tool_name,
+            "Category": category.capitalize(),
+            "Estimated Monthly Cost ($)": cost
+        })
     return pd.DataFrame(cost_data)
 
 # Generate flowchart
@@ -128,7 +130,10 @@ with st.form("input_form"):
     st.header("Step 1: Select Data Sources")
     data_sources = st.multiselect(
         "Select Data Sources:",
-        options=["Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media"],
+        options=[
+            "Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media",
+            "AWS S3", "Salesforce", "Shopify", "PostgreSQL", "MongoDB", "Kafka Stream", "IoT Devices"
+        ],
     )
 
     st.header("Step 2: Select Usage Tier")
@@ -154,7 +159,6 @@ with st.form("input_form"):
 
 # Form submission handling
 if submit_button:
-    # Validations
     if not data_sources:
         st.error("❌ Please select at least one data source.")
     elif not usage_tier:
@@ -164,7 +168,6 @@ if submit_button:
     elif not (historical_load_input and monthly_increase_input and datasets_input and daily_refresh_input and three_hour_refresh_input and hourly_refresh_input and real_time_refresh_input):
         st.error("❌ Please fill out all dataset configuration fields.")
     else:
-        # Parsing numbers
         historical_load = parse_number_input(historical_load_input) or 0
         monthly_increase = parse_number_input(monthly_increase_input) or 0
         datasets = parse_number_input(datasets_input) or 0
