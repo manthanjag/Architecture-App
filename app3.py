@@ -18,7 +18,6 @@ def parse_number_input(input_text):
         "m": 1_000_000, "million": 1_000_000,
         "b": 1_000_000_000, "billion": 1_000_000_000
     }
-
     match = re.match(r"(\d+(?:\.\d+)?)\s*([a-z]+)?", input_text)
     if match:
         num, unit = match.groups()
@@ -125,54 +124,57 @@ def generate_flowchart_and_json(data_sources, refresh_details, custom_requiremen
     return json.dumps(tool_suggestions, indent=4), flowchart.source, tool_suggestions
 
 # Streamlit UI
-st.title("🔧 Data Architecture Tool Suggestion")
+st.title("🔧 Data Architecture Tool Suggestion App")
 
-st.header("Step 1: Select Data Sources")
-data_sources = st.multiselect(
-    "Select Data Sources:",
-    options=["Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media"],
-)
+with st.form("input_form"):
+    st.header("Step 1: Select Data Sources")
+    data_sources = st.multiselect(
+        "Select Data Sources:",
+        options=["Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media"],
+    )
 
-st.header("Step 2: Select Usage Tier")
-usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"])
+    st.header("Step 2: Select Usage Tier")
+    usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"])
 
-st.header("Step 3: Describe Custom Requirement")
-custom_requirement = st.text_area(
-    "Describe your custom requirement:",
-    placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
-    height=150
-)
+    st.header("Step 3: Describe Custom Requirement")
+    custom_requirement = st.text_area(
+        "Describe your custom requirement:",
+        placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
+        height=150
+    )
 
-st.header("Step 4: Input Dataset Configuration")
+    st.header("Step 4: Input Dataset Configuration")
+    historical_load_input = st.text_input("Historical Load (e.g., '20 million'):")
+    monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):")
+    datasets_input = st.text_input("Number of Datasets:")
+    daily_refresh_input = st.text_input("Daily Refresh Datasets:")
+    three_hour_refresh_input = st.text_input("3-Hour Refresh Datasets:")
+    hourly_refresh_input = st.text_input("Hourly Refresh Datasets:")
+    real_time_refresh_input = st.text_input("15-Min Refresh Datasets:")
 
-historical_load_input = st.text_input("Historical Load (e.g., '20 million'):")
-monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):")
-datasets_input = st.text_input("Number of Datasets:")
-daily_refresh_input = st.text_input("Daily Refresh Datasets:")
-three_hour_refresh_input = st.text_input("3-Hour Refresh Datasets:")
-hourly_refresh_input = st.text_input("Hourly Refresh Datasets:")
-real_time_refresh_input = st.text_input("15-Min Refresh Datasets:")
+    submit_button = st.form_submit_button("🚀 Generate Flowchart and Cost Estimate")
 
-# Parse numbers
-historical_load = parse_number_input(historical_load_input)
-monthly_increase = parse_number_input(monthly_increase_input)
-datasets = parse_number_input(datasets_input)
-daily_refresh = parse_number_input(daily_refresh_input)
-three_hour_refresh = parse_number_input(three_hour_refresh_input)
-hourly_refresh = parse_number_input(hourly_refresh_input)
-real_time_refresh = parse_number_input(real_time_refresh_input)
-
-if st.button("🚀 Generate Flowchart and Cost Estimate"):
-    # Validation
+# Form submission handling
+if submit_button:
+    # Validations
     if not data_sources:
         st.error("❌ Please select at least one data source.")
     elif not usage_tier:
         st.error("❌ Please select a usage tier.")
     elif not custom_requirement.strip():
         st.error("❌ Please describe your custom requirement.")
-    elif not all([historical_load, monthly_increase, datasets, daily_refresh, three_hour_refresh, hourly_refresh, real_time_refresh]):
-        st.error("❌ Please fill out all dataset configuration fields with valid numbers.")
+    elif not (historical_load_input and monthly_increase_input and datasets_input and daily_refresh_input and three_hour_refresh_input and hourly_refresh_input and real_time_refresh_input):
+        st.error("❌ Please fill out all dataset configuration fields.")
     else:
+        # Parsing numbers
+        historical_load = parse_number_input(historical_load_input) or 0
+        monthly_increase = parse_number_input(monthly_increase_input) or 0
+        datasets = parse_number_input(datasets_input) or 0
+        daily_refresh = parse_number_input(daily_refresh_input) or 0
+        three_hour_refresh = parse_number_input(three_hour_refresh_input) or 0
+        hourly_refresh = parse_number_input(hourly_refresh_input) or 0
+        real_time_refresh = parse_number_input(real_time_refresh_input) or 0
+
         refresh_details = {
             "historical_load": historical_load,
             "monthly_increase": monthly_increase,
@@ -186,7 +188,7 @@ if st.button("🚀 Generate Flowchart and Cost Estimate"):
         with st.spinner("Generating suggestions and flowchart..."):
             json_response, graphviz_code, tool_suggestions = generate_flowchart_and_json(data_sources, refresh_details, custom_requirement)
 
-        if not json_response or "Error" in str(json_response):
+        if not json_response:
             st.error("❌ Failed to generate JSON response.")
         else:
             st.success("✅ Flowchart and JSON generated successfully!")
