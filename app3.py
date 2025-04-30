@@ -39,7 +39,7 @@ TOOL_COSTS = {
     "Tableau": {"Small": 300, "Medium": 1500, "Large": 4500},
 }
 
-# GPT prompt based on inputs
+# GPT prompt
 def get_tool_suggestions(data_sources, refresh_details, custom_requirement):
     user_message = f"""
 You are a cloud architecture expert. Based on the following data, suggest the best ingestion, transformation, and visualization tools.
@@ -127,14 +127,23 @@ def generate_flowchart_and_json(data_sources, refresh_details, custom_requiremen
 # Streamlit UI
 st.title("🔧 Data Architecture Tool Suggestion")
 
-st.header("Step 1: Input Data Sources")
+st.header("Step 1: Select Data Sources")
 data_sources = st.multiselect(
     "Select Data Sources:",
     options=["Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media"],
-    default=[]
 )
 
-st.header("Step 2: Input Dataset Configuration")
+st.header("Step 2: Select Usage Tier")
+usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"])
+
+st.header("Step 3: Describe Custom Requirement")
+custom_requirement = st.text_area(
+    "Describe your custom requirement:",
+    placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
+    height=150
+)
+
+st.header("Step 4: Input Dataset Configuration")
 
 historical_load_input = st.text_input("Historical Load (e.g., '20 million'):")
 monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):")
@@ -144,32 +153,25 @@ three_hour_refresh_input = st.text_input("3-Hour Refresh Datasets:")
 hourly_refresh_input = st.text_input("Hourly Refresh Datasets:")
 real_time_refresh_input = st.text_input("15-Min Refresh Datasets:")
 
-historical_load = parse_number_input(historical_load_input) or 0
-monthly_increase = parse_number_input(monthly_increase_input) or 0
-datasets = parse_number_input(datasets_input) or 0
-daily_refresh = parse_number_input(daily_refresh_input) or 0
-three_hour_refresh = parse_number_input(three_hour_refresh_input) or 0
-hourly_refresh = parse_number_input(hourly_refresh_input) or 0
-real_time_refresh = parse_number_input(real_time_refresh_input) or 0
-
-st.header("Step 3: Select Usage Tier")
-usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"], index=1)
-
-st.header("Step 4: Describe Custom Requirement")
-custom_requirement = st.text_area(
-    "Describe your custom requirement:",
-    placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
-    height=150
-)
+# Parse numbers
+historical_load = parse_number_input(historical_load_input)
+monthly_increase = parse_number_input(monthly_increase_input)
+datasets = parse_number_input(datasets_input)
+daily_refresh = parse_number_input(daily_refresh_input)
+three_hour_refresh = parse_number_input(three_hour_refresh_input)
+hourly_refresh = parse_number_input(hourly_refresh_input)
+real_time_refresh = parse_number_input(real_time_refresh_input)
 
 if st.button("🚀 Generate Flowchart and Cost Estimate"):
-    # Check mandatory fields
+    # Validation
     if not data_sources:
         st.error("❌ Please select at least one data source.")
-    elif not (historical_load and monthly_increase and datasets):
-        st.error("❌ Please fill out all dataset configuration fields.")
+    elif not usage_tier:
+        st.error("❌ Please select a usage tier.")
     elif not custom_requirement.strip():
         st.error("❌ Please describe your custom requirement.")
+    elif not all([historical_load, monthly_increase, datasets, daily_refresh, three_hour_refresh, hourly_refresh, real_time_refresh]):
+        st.error("❌ Please fill out all dataset configuration fields with valid numbers.")
     else:
         refresh_details = {
             "historical_load": historical_load,
