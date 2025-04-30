@@ -43,7 +43,7 @@ def get_tool_suggestions(data_sources, refresh_details, custom_requirement):
     user_message = f"""
 You are a cloud architecture expert. Based on the following data, suggest the best ingestion, transformation, and visualization tools.
 
-Strictly choose tools from: [Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
+You are free to choose any tools that best fit the use case (no restriction to a predefined list). Prioritize tools that are industry-standard, scalable, and cost-effective.
 
 Dataset Details:
 - Data Sources: {", ".join(data_sources)}
@@ -67,7 +67,7 @@ Respond ONLY in this JSON format:
 }}
 """
     messages = [
-        {"role": "system", "content": "You are a cloud architecture expert. Provide low-cost, high-performance tool recommendations."},
+        {"role": "system", "content": "You are a cloud architecture expert. Provide cost-effective, high-performance tool recommendations."},
         {"role": "user", "content": user_message}
     ]
 
@@ -89,15 +89,13 @@ def estimate_tool_costs(tool_suggestions, usage_tier):
     cost_data = []
     for category, tool_info in tool_suggestions.items():
         tool_name = tool_info.get("tool")
-        if tool_name in TOOL_COSTS:
-            cost = TOOL_COSTS[tool_name].get(usage_tier, "N/A")
-        else:
-            cost = "N/A"
-        cost_data.append({
-            "Tool": tool_name,
-            "Category": category.capitalize(),
-            "Estimated Monthly Cost ($)": cost
-        })
+        if tool_name:
+            cost = TOOL_COSTS.get(tool_name, {}).get(usage_tier, "Custom Pricing")
+            cost_data.append({
+                "Tool": tool_name,
+                "Category": category.capitalize(),
+                "Estimated Monthly Cost ($)": cost
+            })
     return pd.DataFrame(cost_data)
 
 # Generate flowchart
