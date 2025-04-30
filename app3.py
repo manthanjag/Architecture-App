@@ -27,7 +27,7 @@ def parse_number_input(input_text):
         return int(num * multiplier)
     return None
 
-# Tool cost estimates by tier (mocked)
+# Tool cost estimates
 TOOL_COSTS = {
     "Domo": {"Small": 500, "Medium": 2000, "Large": 5000},
     "Power BI": {"Small": 200, "Medium": 1000, "Large": 3000},
@@ -39,37 +39,15 @@ TOOL_COSTS = {
     "Tableau": {"Small": 300, "Medium": 1500, "Large": 4500},
 }
 
-# Function to get tool suggestions
+# GPT prompt based on inputs
 def get_tool_suggestions(data_sources, refresh_details, custom_requirement):
-    if custom_requirement:
-        user_message = f"""
-You are a cloud architecture expert. Suggest tools for the following requirements:
+    user_message = f"""
+You are a cloud architecture expert. Based on the following data, suggest the best ingestion, transformation, and visualization tools.
 
-{custom_requirement}
+Strictly choose tools from: [Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
 
-Strictly choose tools only from this list: [Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
-
-Expected JSON format:
-{{
-    "ingestion": {{"tool": "ToolName"}},
-    "transformation": {{"tool": "ToolName"}},
-    "visualization": {{"tool": "ToolName"}}
-}}
-"""
-    else:
-        user_message = f"""
-Based on the following data sources and refresh configuration, suggest one tool for each task (ingestion, transformation, visualization) strictly from this list:
-[Domo, Power BI, Sigma, dbt, Snowflake, Databricks, ADF, Tableau].
-
-Expected JSON format:
-{{
-    "ingestion": {{"tool": "ToolName"}},
-    "transformation": {{"tool": "ToolName"}},
-    "visualization": {{"tool": "ToolName"}}
-}}
-
-Data Sources: {", ".join(data_sources)}
-Refresh Config:
+Dataset Details:
+- Data Sources: {", ".join(data_sources)}
 - Historical Load: {refresh_details['historical_load']}
 - Monthly Increase: {refresh_details['monthly_increase']}
 - Number of Datasets: {refresh_details['datasets']}
@@ -78,8 +56,17 @@ Refresh Config:
   - {refresh_details['three_hour_refresh']} datasets refresh every 3 hours
   - {refresh_details['hourly_refresh']} datasets refresh hourly
   - {refresh_details['real_time_refresh']} datasets refresh every 15 minutes
-"""
 
+Custom Requirement:
+{custom_requirement}
+
+Respond ONLY in this JSON format:
+{{
+    "ingestion": {{"tool": "ToolName"}},
+    "transformation": {{"tool": "ToolName"}},
+    "visualization": {{"tool": "ToolName"}}
+}}
+"""
     messages = [
         {"role": "system", "content": "You are a cloud architecture expert. Provide low-cost, high-performance tool recommendations."},
         {"role": "user", "content": user_message}
@@ -95,10 +82,10 @@ Refresh Config:
     try:
         return json.loads(response_text)
     except json.JSONDecodeError:
-        st.error("❌ GPT returned an invalid response. Try again.")
+        st.error("❌ GPT returned an invalid response.")
         return None
 
-# Estimate costs based on tier
+# Estimate tool costs
 def estimate_tool_costs(tool_suggestions, usage_tier):
     cost_data = []
     for category, tool_info in tool_suggestions.items():
@@ -114,14 +101,14 @@ def estimate_tool_costs(tool_suggestions, usage_tier):
         })
     return pd.DataFrame(cost_data)
 
-# Flowchart and JSON generation
+# Generate flowchart
 def generate_flowchart_and_json(data_sources, refresh_details, custom_requirement):
     tool_suggestions = get_tool_suggestions(data_sources, refresh_details, custom_requirement)
     if not tool_suggestions:
         return None, None, None
 
     flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR'}, node_attr={'shape': 'box'})
-    flowchart.node("Data Sources", "\n".join(data_sources) if data_sources else "Your Data")
+    flowchart.node("Data Sources", "\n".join(data_sources))
 
     ingestion_tool = tool_suggestions.get('ingestion', {}).get('tool', 'Unknown')
     transformation_tool = tool_suggestions.get('transformation', {}).get('tool', 'Unknown')
@@ -140,81 +127,77 @@ def generate_flowchart_and_json(data_sources, refresh_details, custom_requiremen
 # Streamlit UI
 st.title("🔧 Data Architecture Tool Suggestion")
 
-st.header("Step 1: Input Configuration")
-
+st.header("Step 1: Input Data Sources")
 data_sources = st.multiselect(
     "Select Data Sources:",
     options=["Google Ads", "Google Analytics", "SQL Database", "Excel Files", "Social Media"],
-    default=["Google Ads", "Google Analytics"]
+    default=[]
 )
 
-st.subheader("Step 2: (Optional) Describe Your Requirements")
+st.header("Step 2: Input Dataset Configuration")
+
+historical_load_input = st.text_input("Historical Load (e.g., '20 million'):")
+monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):")
+datasets_input = st.text_input("Number of Datasets:")
+daily_refresh_input = st.text_input("Daily Refresh Datasets:")
+three_hour_refresh_input = st.text_input("3-Hour Refresh Datasets:")
+hourly_refresh_input = st.text_input("Hourly Refresh Datasets:")
+real_time_refresh_input = st.text_input("15-Min Refresh Datasets:")
+
+historical_load = parse_number_input(historical_load_input) or 0
+monthly_increase = parse_number_input(monthly_increase_input) or 0
+datasets = parse_number_input(datasets_input) or 0
+daily_refresh = parse_number_input(daily_refresh_input) or 0
+three_hour_refresh = parse_number_input(three_hour_refresh_input) or 0
+hourly_refresh = parse_number_input(hourly_refresh_input) or 0
+real_time_refresh = parse_number_input(real_time_refresh_input) or 0
+
+st.header("Step 3: Select Usage Tier")
+usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"], index=1)
+
+st.header("Step 4: Describe Custom Requirement")
 custom_requirement = st.text_area(
-    "Describe your custom requirement (optional):",
-    placeholder="Example: I want a tool that can ingest large volumes of e-commerce data daily and visualize real-time metrics.",
+    "Describe your custom requirement:",
+    placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
     height=150
 )
 
-# Show dataset config only if no custom requirement
-if data_sources and not custom_requirement:
-    st.subheader("Step 3: Dataset Configuration")
-
-    historical_load_input = st.text_input("Historical Load (e.g., '20 million'):", "20 million")
-    monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):", "50 thousand")
-    datasets_input = st.text_input("Number of Datasets:", "20")
-    daily_refresh_input = st.text_input("Daily Refresh Datasets:", "10")
-    three_hour_refresh_input = st.text_input("3-Hour Refresh Datasets:", "5")
-    hourly_refresh_input = st.text_input("Hourly Refresh Datasets:", "3")
-    real_time_refresh_input = st.text_input("15-Min Refresh Datasets:", "2")
-
-    historical_load = parse_number_input(historical_load_input) or 0
-    monthly_increase = parse_number_input(monthly_increase_input) or 0
-    datasets = parse_number_input(datasets_input) or 0
-    daily_refresh = parse_number_input(daily_refresh_input) or 0
-    three_hour_refresh = parse_number_input(three_hour_refresh_input) or 0
-    hourly_refresh = parse_number_input(hourly_refresh_input) or 0
-    real_time_refresh = parse_number_input(real_time_refresh_input) or 0
-
-else:
-    # Set dummy values if custom requirement filled
-    historical_load = 0
-    monthly_increase = 0
-    datasets = 0
-    daily_refresh = 0
-    three_hour_refresh = 0
-    hourly_refresh = 0
-    real_time_refresh = 0
-
-usage_tier = st.selectbox("Step 4: Select Usage Tier:", ["Small", "Medium", "Large"], index=1)
-
 if st.button("🚀 Generate Flowchart and Cost Estimate"):
-    refresh_details = {
-        "historical_load": historical_load,
-        "monthly_increase": monthly_increase,
-        "datasets": datasets,
-        "daily_refresh": daily_refresh,
-        "three_hour_refresh": three_hour_refresh,
-        "hourly_refresh": hourly_refresh,
-        "real_time_refresh": real_time_refresh
-    }
-
-    with st.spinner("Generating suggestions and flowchart..."):
-        json_response, graphviz_code, tool_suggestions = generate_flowchart_and_json(data_sources, refresh_details, custom_requirement)
-
-    if not json_response or "Error" in str(json_response):
-        st.error("❌ Failed to generate JSON response.")
+    # Check mandatory fields
+    if not data_sources:
+        st.error("❌ Please select at least one data source.")
+    elif not (historical_load and monthly_increase and datasets):
+        st.error("❌ Please fill out all dataset configuration fields.")
+    elif not custom_requirement.strip():
+        st.error("❌ Please describe your custom requirement.")
     else:
-        st.success("✅ Flowchart and JSON generated successfully!")
+        refresh_details = {
+            "historical_load": historical_load,
+            "monthly_increase": monthly_increase,
+            "datasets": datasets,
+            "daily_refresh": daily_refresh,
+            "three_hour_refresh": three_hour_refresh,
+            "hourly_refresh": hourly_refresh,
+            "real_time_refresh": real_time_refresh
+        }
 
-        st.subheader("Tool Suggestions (JSON):")
-        st.code(json_response, language="json")
+        with st.spinner("Generating suggestions and flowchart..."):
+            json_response, graphviz_code, tool_suggestions = generate_flowchart_and_json(data_sources, refresh_details, custom_requirement)
 
-        if graphviz_code:
-            st.subheader("Flowchart:")
-            st.graphviz_chart(graphviz_code)
+        if not json_response or "Error" in str(json_response):
+            st.error("❌ Failed to generate JSON response.")
         else:
-            st.warning("⚠️ Flowchart generation failed.")
+            st.success("✅ Flowchart and JSON generated successfully!")
 
-        st.subheader(f"Estimated Monthly Cost ({usage_tier} Tier):")
-        cost_df = estimate_tool_costs(tool_suggestions, usage_tier)
-        st.table(cost_df)
+            st.subheader("Tool Suggestions (JSON):")
+            st.code(json_response, language="json")
+
+            if graphviz_code:
+                st.subheader("Flowchart:")
+                st.graphviz_chart(graphviz_code)
+            else:
+                st.warning("⚠️ Flowchart generation failed.")
+
+            st.subheader(f"Estimated Monthly Cost ({usage_tier} Tier):")
+            cost_df = estimate_tool_costs(tool_suggestions, usage_tier)
+            st.table(cost_df)
