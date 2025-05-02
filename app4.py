@@ -167,8 +167,8 @@ with st.form("input_form"):
     st.header("Step 2: Select Usage Tier")
     usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"])
 
-    #st.header("Step 3: Select Flowchart Complexity")
-    #flowchart_complexity = st.selectbox("Select Complexity:", ["Simple", "Complex"])
+    st.header("Step 3: Select Flowchart Complexity")
+    flowchart_complexity = st.selectbox("Select Complexity:", ["Simple", "Complex"])
 
     st.header("Step 4: Describe Custom Requirement")
     custom_requirement = st.text_area(
@@ -223,8 +223,8 @@ if submit_button:
             if tool_suggestions:
                 st.success("✅ Tool suggestions generated successfully!")
 
-                #if flowchart_complexity == "Simple":
-                    #flowchart = generate_simple_flowchart(data_sources, tool_suggestions)
+                if flowchart_complexity == "Simple":
+                    flowchart = generate_simple_flowchart(data_sources, tool_suggestions)
                 else:
                     flowchart = generate_complex_flowchart(data_sources, tool_suggestions)
 
