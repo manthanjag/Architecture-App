@@ -88,37 +88,19 @@ Respond ONLY in this JSON format:
         return None
 
 # Estimate tool costs
-def estimate_tool_costs(tool_suggestions, usage_tier):
+def estimate_tool_costs(tool_suggestions):
     cost_data = []
     for category, tool_info in tool_suggestions.items():
         tool_name = tool_info.get("tool")
-        cost = TOOL_COSTS.get(tool_name, {}).get(usage_tier, "Custom Pricing")
+        costs = TOOL_COSTS.get(tool_name, {"Small": "Custom Pricing", "Medium": "Custom Pricing", "Large": "Custom Pricing"})
         cost_data.append({
             "Tool": tool_name,
             "Category": category.capitalize(),
-            "Estimated Monthly Cost ($)": cost
+            "Small Tier ($/month)": costs.get("Small", "Custom Pricing"),
+            "Medium Tier ($/month)": costs.get("Medium", "Custom Pricing"),
+            "Large Tier ($/month)": costs.get("Large", "Custom Pricing"),
         })
     return pd.DataFrame(cost_data)
-
-# Generate simple flowchart
-def generate_simple_flowchart(data_sources, tool_suggestions):
-    flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR'}, node_attr={'shape': 'box'})
-
-    flowchart.node("Data Sources", "\n".join(data_sources))
-
-    ingestion_tool = tool_suggestions.get('ingestion', {}).get('tool', 'Unknown')
-    transformation_tool = tool_suggestions.get('transformation', {}).get('tool', 'Unknown')
-    visualization_tool = tool_suggestions.get('visualization', {}).get('tool', 'Unknown')
-
-    flowchart.node("Ingestion", f"{ingestion_tool} (Ingestion)")
-    flowchart.node("Transformation", f"{transformation_tool} (Transformation)")
-    flowchart.node("Visualization", f"{visualization_tool} (Visualization)")
-
-    flowchart.edge("Data Sources", "Ingestion")
-    flowchart.edge("Ingestion", "Transformation")
-    flowchart.edge("Transformation", "Visualization")
-
-    return flowchart
 
 # Generate complex flowchart
 def generate_complex_flowchart(data_sources, tool_suggestions):
@@ -132,11 +114,11 @@ def generate_complex_flowchart(data_sources, tool_suggestions):
     visualization_tool = tool_suggestions.get('visualization', {}).get('tool', 'Unknown')
 
     flowchart.node("Ingestion", f"{ingestion_tool} (Ingestion)")
-    flowchart.node("Landing Zone", "Landing Zone (Storage)")
-    flowchart.node("Transformation", f"{transformation_tool} (Transformation)")
-    flowchart.node("Visualization", f"{visualization_tool} (Visualization)")
-    flowchart.node("Monitoring", "Monitoring & Alerts")
-    flowchart.node("Business Feedback", "Business Feedback Loop")
+    flowchart.node("Landing Zone", "Landing Zone (Raw Storage)")
+    flowchart.node("Transformation", f"{transformation_tool} (Transformation Engine)")
+    flowchart.node("Visualization", f"{visualization_tool} (BI Layer)")
+    flowchart.node("Monitoring", "Monitoring & Alerting System")
+    flowchart.node("Analytics Layer", "Analytics & Data Science Layer")
 
     for source in data_sources:
         flowchart.edge(source, "Ingestion")
@@ -146,8 +128,8 @@ def generate_complex_flowchart(data_sources, tool_suggestions):
     flowchart.edge("Transformation", "Visualization")
     flowchart.edge("Ingestion", "Monitoring")
     flowchart.edge("Transformation", "Monitoring")
-    flowchart.edge("Visualization", "Business Feedback")
-    flowchart.edge("Business Feedback", "Transformation")
+    flowchart.edge("Visualization", "Analytics Layer")
+    flowchart.edge("Analytics Layer", "Transformation")
 
     return flowchart
 
@@ -164,20 +146,14 @@ with st.form("input_form"):
         ],
     )
 
-    st.header("Step 2: Select Usage Tier")
-    usage_tier = st.selectbox("Select Usage Tier:", ["Small", "Medium", "Large"])
-
-    st.header("Step 3: Select Flowchart Complexity")
-    flowchart_complexity = st.selectbox("Select Complexity:", ["Simple", "Complex"])
-
-    st.header("Step 4: Describe Custom Requirement")
+    st.header("Step 2: Describe Custom Requirement")
     custom_requirement = st.text_area(
         "Describe your custom requirement:",
         placeholder="Example: Need a scalable solution for real-time data ingestion and visualization.",
         height=150
     )
 
-    st.header("Step 5: Input Dataset Configuration")
+    st.header("Step 3: Input Dataset Configuration")
     historical_load_input = st.text_input("Historical Load (e.g., '20 million'):")
     monthly_increase_input = st.text_input("Monthly Increase (e.g., '50 thousand'):")
     datasets_input = st.text_input("Number of Datasets:")
@@ -192,8 +168,6 @@ with st.form("input_form"):
 if submit_button:
     if not data_sources:
         st.error("❌ Please select at least one data source.")
-    elif not usage_tier:
-        st.error("❌ Please select a usage tier.")
     elif not custom_requirement.strip():
         st.error("❌ Please describe your custom requirement.")
     elif not (historical_load_input and monthly_increase_input and datasets_input and daily_refresh_input and three_hour_refresh_input and hourly_refresh_input and real_time_refresh_input):
@@ -223,11 +197,7 @@ if submit_button:
             if tool_suggestions:
                 st.success("✅ Tool suggestions generated successfully!")
 
-                if flowchart_complexity == "Simple":
-                    flowchart = generate_simple_flowchart(data_sources, tool_suggestions)
-                else:
-                    flowchart = generate_complex_flowchart(data_sources, tool_suggestions)
-
+                flowchart = generate_complex_flowchart(data_sources, tool_suggestions)
                 json_response = json.dumps(tool_suggestions, indent=4)
 
                 st.subheader("Tool Suggestions (JSON):")
@@ -236,9 +206,8 @@ if submit_button:
                 st.subheader("Architecture Flowchart:")
                 st.graphviz_chart(flowchart.source)
 
-                st.subheader(f"Estimated Monthly Cost ({usage_tier} Tier):")
-                cost_df = estimate_tool_costs(tool_suggestions, usage_tier)
+                st.subheader("Estimated Monthly Costs:")
+                cost_df = estimate_tool_costs(tool_suggestions)
                 st.table(cost_df)
             else:
                 st.error("❌ Failed to generate tool suggestions.")
-
