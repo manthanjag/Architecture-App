@@ -3,7 +3,7 @@ import openai
 import graphviz
 
 # Set your OpenAI API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]  # Safer for deployment. Or directly paste if testing.
+openai.api_key = st.secrets["KEY"]  # Safer for deployment. Or directly paste if testing.
 
 # Title
 st.title("🛠️ Data Architecture Designer")
