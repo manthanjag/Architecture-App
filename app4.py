@@ -87,21 +87,6 @@ Respond ONLY in this JSON format:
         st.error("❌ GPT returned an invalid response.")
         return None
 
-# Estimate tool costs
-def estimate_tool_costs(tool_suggestions):
-    cost_data = []
-    for category, tool_info in tool_suggestions.items():
-        tool_name = tool_info.get("tool")
-        costs = TOOL_COSTS.get(tool_name, {"Small": "Custom Pricing", "Medium": "Custom Pricing", "Large": "Custom Pricing"})
-        cost_data.append({
-            "Tool": tool_name,
-            "Category": category.capitalize(),
-            "Small Tier ($/month)": costs.get("Small", "Custom Pricing"),
-            "Medium Tier ($/month)": costs.get("Medium", "Custom Pricing"),
-            "Large Tier ($/month)": costs.get("Large", "Custom Pricing"),
-        })
-    return pd.DataFrame(cost_data)
-
 # Generate complex flowchart
 def generate_complex_flowchart(data_sources, tool_suggestions):
     flowchart = Digraph(format='png', graph_attr={'rankdir': 'LR'}, node_attr={'shape': 'box', 'style': 'rounded,filled', 'fillcolor': 'lightgrey'})
@@ -175,7 +160,7 @@ with st.form("input_form"):
     hourly_refresh_input = st.text_input("Hourly Refresh Datasets:")
     real_time_refresh_input = st.text_input("15-Min Refresh Datasets:")
 
-    submit_button = st.form_submit_button("🚀 Generate Flowchart and Cost Estimate")
+    submit_button = st.form_submit_button("🚀 Generate Flowchart")
 
 # Form submission handling
 if submit_button:
@@ -211,16 +196,19 @@ if submit_button:
                 st.success("✅ Tool suggestions generated successfully!")
 
                 flowchart = generate_complex_flowchart(data_sources, tool_suggestions)
-                json_response = json.dumps(tool_suggestions, indent=4)
 
-                st.subheader("Tool Suggestions (JSON):")
-                st.code(json_response, language="json")
+                # Commented out: JSON response
+                # json_response = json.dumps(tool_suggestions, indent=4)
+                # st.subheader("Tool Suggestions (JSON):")
+                # st.code(json_response, language="json")
 
                 st.subheader("Architecture Flowchart:")
                 st.graphviz_chart(flowchart.source)
 
-                st.subheader("Estimated Monthly Costs:")
-                cost_df = estimate_tool_costs(tool_suggestions)
-                st.table(cost_df)
+                # Commented out: Cost estimation
+                # st.subheader("Estimated Monthly Costs:")
+                # cost_df = estimate_tool_costs(tool_suggestions)
+                # st.table(cost_df)
+
             else:
                 st.error("❌ Failed to generate tool suggestions.")
